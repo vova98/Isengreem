@@ -1,0 +1,7 @@
+push 5
+push 6
+mul
+push 4
+sub
+pop
+end
