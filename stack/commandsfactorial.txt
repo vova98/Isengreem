@@ -1,0 +1,28 @@
+push 7
+pop ax
+push 2
+ja one
+pop cx
+pop bx
+next:
+push ax
+push bx
+jbe stop
+call calc
+jmp next
+one:
+push 1
+pop cx
+stop:
+push cx
+out
+end
+calc:
+push cx
+push bx
+push 1
+add
+pop bx
+mul
+pop cx
+ret

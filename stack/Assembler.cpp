@@ -1,53 +1,76 @@
-// Assembler.cpp: определяет точку входа для консольного приложения.
-//
-
 #include "stdafx.h"
 #include <iostream>
 #include <cassert>
 #include <stdlib.h>
 #include <cstring>
-#include "enum_comm.h"
 
 
 #define OK 1
 #define BAD -1
-#define JUMP_ASM(num)												\
-			commandBuff[(*j)++] = num;									\
-			(*i)++;													\
-			if (arrayOfMarker[buffer[*i] - '0'] >= 1)				\
-				commandBuff[(*j)++] = arrayOfMarker[buffer[*i] - '0'];	\
-			else (*j)++;												\
-		break;
 
+#define JUMP_ASM(num)									\
+commandBuff[(*j)++] = num;								\
+(*k) = 0;												\
+while (buffer[++(*i)] != '\r')							\
+currname[(*k)++] = buffer[(*i)];						\
+for (int l = 0; l < SIZEOFMARKARRAY; l++)				\
+{														\
+	if (!strcmp(arrayOfMarker[l].name, currname))		\
+	{													\
+		commandBuff[(*j)++] = arrayOfMarker[l].numb;	\
+		Flag = true;									\
+		break;											\
+	}													\
+}														\
+if (!Flag) Nerror = BUCELL;								\
+	break;
+
+const int SIZEOFMARKER = 15;
+const int SIZEOFMARKARRAY = 10;
+
+struct markers
+{
+	char name[SIZEOFMARKER];
+	int numb;
+};
+
+
+/**
+Here will be doxygen comment soon
+*/
 
 void PrintHelp();
 void PrintVersion();
+void PrintError(int line);
 char* ReadComm(_TCHAR* argv);
-int* assembl(const char* buffer);
+int* assembl(const char* buffer, int* j);
 int* moreSize(int* commandBuff, int size);
 void ErrPrint(int Nerror);
-int printInFile(int* commandBuff, _TCHAR* argv);
-int choseCommand(char* comm, int* i, int* j, const char* buffer, int val, int* commandBuff, int* arrayOfMarker, int* Step);
+int printInFile(int* commandBuff, int j, _TCHAR* argv);
+int choseCommand(char* comm, int* i, int* j, const char* buffer, int val, int* commandBuff, markers* arrayOfMarker, int* Step, int* k, char* currname, int* arrayOfFunc, int* NumFunc, int* returns, int* numCalls);
 const char* wtoc(const wchar_t* w_string);
 void code();
 
 int Nerror = 0;
 
-enum ErrorNum { NOFILE, MEMERR, FILEERR, BUCELL};
-enum commands_str { push = 'push', pop = 'pop', add = 'add', mul = 'mul', sub = 'sub', divi = 'div',
-	end = 'end', out = 'out', sqr = 'sqrt', ja = 'ja', jae = 'jae', jb = 'jb', jbe = 'jbe',
-	je = 'je', jne = 'jne', jmp = 'jmp' };
+enum ErrorNum { NOFILE = 1, MEMERR, FILEERR, BUCELL, PTRERR };
+enum commands_str {
+	push = 'push', pop = 'pop', add = 'add', mul = 'mul', sub = 'sub', divi = 'div',
+	end = 'end', out = 'out', sqr = 'sqr', root = 'sqrt', ja = 'ja', jae = 'jae', jb = 'jb', jbe = 'jbe',
+	je = 'je', jne = 'jne', jmp = 'jmp', call = 'call', ret = 'ret', err = 'err'
+};
 
 
-  
+
 int _tmain(int argc, _TCHAR* argv[])
 {
 	//code();
 	const char* help = "--help";
 	const char* version = "--version";
 	const char* argv1 = "commands.txt";
+	int j = 0;
 	int Is_Print_Ok = 0;
-	
+
 	if (argc < 2)
 	{
 		printf("Give me a name of file, please. \n");
@@ -56,21 +79,21 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	const char* argvName = wtoc(argv[1]);
 
-	if (!strcmp(argvName,help))
+	if (!strcmp(argvName, help))
 		PrintHelp();
-	else if (!strcmp(argvName,version))
+	else if (!strcmp(argvName, version))
 		PrintVersion();
 	else
 	{
 		const char *buffer = ReadComm(argv[1]);
-		int* commandBuffer = assembl(buffer);
+		int* commandBuffer = assembl(buffer, &j);
 
 		if (argc >= 2)
-			Is_Print_Ok = printInFile(commandBuffer, *argv);
+			Is_Print_Ok = printInFile(commandBuffer, j, *argv);
 		else
 		{
 			_TCHAR* argv2 = L"commands.asm";
-			Is_Print_Ok = printInFile(commandBuffer, argv2);
+			Is_Print_Ok = printInFile(commandBuffer, j, argv2);
 		}
 
 		if (Is_Print_Ok == -1) printf("Error\n");
@@ -85,7 +108,7 @@ const char* wtoc(const wchar_t* w_string)
 	return argvName;
 }
 
-int printInFile(int* commandBuff, _TCHAR* argv)
+int printInFile(int* commandBuff, int countOfCommands, _TCHAR* argv)
 {
 	const char* argvName = wtoc(argv);
 	//const char* argvName = (char*)calloc(wcslen(argv), sizeof(argvName));
@@ -95,69 +118,127 @@ int printInFile(int* commandBuff, _TCHAR* argv)
 	FILE *fileout = NULL;
 	errno_t err = fopen_s(&fileout, argvName, "w");
 
-	int i = 0;
-	fprintf(fileout, "%d ", commandBuff[i]);
-	while (commandBuff[i++] != 7)
+	fprintf(fileout, "%d\n", countOfCommands);
+	for (int i = 0; i < countOfCommands; i++)
 		fprintf(fileout, "%d ", commandBuff[i]);
 
-	if(fclose(fileout) == -1) return BAD;
+	PrintError(__LINE__);
+	if (fclose(fileout) == -1) return BAD;
 	return OK;
 }
 
 int assembly_push(int *i, const char* buffer, int* j, int* commandBuff, int val)
 {
+	char numbuff[12] = "\0";
+	int k = 0;
+	if (i == NULL || j == NULL || commandBuff == NULL || buffer == NULL)
+		Nerror = PTRERR;
 	(*i)++;
 	if (buffer[(*i)] >= 'a' && buffer[(*i)] <= 'z')
 	{
+		switch (buffer[*i])
+		{
+		case 'a':commandBuff[(*j)++] = 10; break;
+		case 'b':commandBuff[(*j)++] = 24; break;
+		case 'c':commandBuff[(*j)++] = 25; break;
+		case 'd':commandBuff[(*j)++] = 26; break;
+		}
 		while (buffer[*i] != '\r')
 			(*i)++;
-		commandBuff[(*j)++] = 10;
+		//commandBuff[(*j)++] = 10;
 	}
 	else
 	{
 		while (buffer[(*i)] != '\r')
-		{
+			numbuff[k++] += buffer[(*i)++];
+		val = atoi(numbuff);
+		/*{
 			val = val * 10 + (buffer[(*i)] - '0');
 			(*i)++;
-		}
+		}*/
 		commandBuff[(*j)++] = 1;
 		commandBuff[(*j)++] = val;
+
 	}
 	val = 0;
+	PrintError(__LINE__);
 	return 0;
 }
 
-int* assembl(const char* buffer)
+int FindMarkers(int sizeOfInFile, const char* buffer, markers* arrayOfMarker, int* Step)
 {
+	if (buffer == NULL || arrayOfMarker == NULL || Step == NULL) Nerror = PTRERR;
+	PrintError(__LINE__);
+	char tmpStr[SIZEOFMARKER] = "";
+	int endOfMain = 0;
+	int i = -1, k = 0, l = 0;
+	while (i < sizeOfInFile)
+	{
+		
+		while (buffer[++i] != '\r' && buffer[i] > 0)
+			tmpStr[k++] = buffer[i];
+		if (strstr(tmpStr, "end"))
+			endOfMain = 1;
+		if (strstr(tmpStr, ":"))
+		{	
+				tmpStr[k - 1] = '\0';
+				strcpy(arrayOfMarker[l].name, tmpStr);
+				arrayOfMarker[l].numb = *Step;
+				(*Step)--;
+				l++;
+		}
+		i += 1;
+		k = 0;
+		(*Step)++;
+		memset(tmpStr, '\0', SIZEOFMARKER);
+	}
+	return OK;
+}
+
+int* assembl(const char* buffer, int* j)
+{
+	if (buffer == NULL || j == NULL) Nerror = PTRERR;
+	PrintError(__LINE__);
 	int sizeOfInFile = strlen(buffer);
 	int FirstComing = 0;
-	int arrayOfMarker[10] = {0};
+	markers arrayOfMarker[SIZEOFMARKARRAY] = { 0 };
+	markers arrayOfCalls[SIZEOFMARKARRAY] = { 0 };
 	const char* space = " ";
 	const char endl = '\n';
-	char comm[5] = {};
-	int i = 0;
+	char comm[10] = {};
+	int i = 0, k = 0, NumFunc = 0, numCalls = 0;
 	int size = sizeOfInFile * 2 / 3;
+	char currname[SIZEOFMARKER] = {};
+	int returns[SIZEOFMARKARRAY] = {};
+
 	int* commandBuff = (int*)calloc(size, sizeof(*commandBuff));
-	
+	if (commandBuff == NULL) Nerror = MEMERR;
+	PrintError(__LINE__);
+	int arrayOfFunc[SIZEOFMARKARRAY] = {};
 	const char *buffer_tmp = (const char*)calloc(sizeOfInFile, sizeof(buffer[0]));
+	if (buffer_tmp == NULL) Nerror = MEMERR;
+	PrintError(__LINE__);
+
 	for (i = 0; i < sizeOfInFile; i++)
 		(char)buffer_tmp[i] = buffer[i];
 
-OneMoreTime:
+	int n_old = 0;
+	int val = 0, Step = 0, MarkerNum = 1;
+
+	FindMarkers(sizeOfInFile, buffer, arrayOfMarker, &Step);
+	Step = 0;
 
 	for (i = 0; i < sizeOfInFile; i++)
 		(char)buffer[i] = buffer_tmp[i];
 
-	int k = 0, n_old = 0;
-	int val = 0, j = 0, Step = 1, MarkerNum = 1;
-	
 	i = 0;
-	while (i < sizeOfInFile-1)
+	//while (i < sizeOfInFile - 1)
+	while (buffer[i] != 'Н' && buffer[i] != '\0')
 	{
 		k = 0;
 		assert(buffer[i] >= 'a' && buffer[i] <= 'z' || buffer[i] == ':' || buffer[i] >= '0' && buffer[i] <= '9');
-		while (buffer[i]>='a' && buffer[i]<='z' || buffer[i] == ':' || buffer[i]>='0' && buffer[i]<='9')
-		{ 
+		while (buffer[i] >= 'a' && buffer[i] <= 'z' || buffer[i] == ':' || buffer[i] >= '0' && buffer[i] <= '9')
+		{
 			comm[k] = buffer[i];
 			i++;
 			k++;
@@ -165,106 +246,118 @@ OneMoreTime:
 		comm[4] = '\0';
 		_strrev(comm);
 		//printf("comm");
-		choseCommand(comm, &i, &j, buffer, val, commandBuff, arrayOfMarker, &Step);
-		
-			if (j >= size - 2)
-			{
-				commandBuff = moreSize(commandBuff, size);
-			}
-			while (buffer[i] != endl && buffer[i] != '\0')
-				i++;
-			i++;
+		choseCommand(comm, &i, j, buffer, val, commandBuff, arrayOfMarker, &Step, &k, currname, arrayOfFunc, &NumFunc, returns, &numCalls);
+		k = 0;
+		currname[0] = '\0';
 
-			for (int j = n_old; j < i; j++)
-				(char)buffer[j] = 'q';
-			n_old = i;
-			for (int l = 0; l < 5; l++)
-				comm[l] = '\0';
-			Step++;
-	}
-	if (FirstComing == 0)
-	{
-		FirstComing = 1;
-		goto OneMoreTime;
+		if (*j >= size - 2)
+		{
+			commandBuff = moreSize(commandBuff, size);
+		}
+		while (buffer[i] != endl && buffer[i] != '\0')
+			i++;
+		i++;
+
+		if (!strcmp(comm, "end")) numCalls = 0;
+		for (int j = n_old; j < i; j++)
+			(char)buffer[j] = 'q';
+		n_old = i;
+		for (int l = 0; l < 5; l++)
+			comm[l] = '\0';
+		Step++;
 	}
 
 	return commandBuff;
 }
 
-int choseCommand(char* comm, int* i, int* j, const char* buffer, int val, int* commandBuff, int* arrayOfMarker, int* Step)
+int choseCommand(char* comm, int* i, int* j, const char* buffer, int val, int* commandBuff, markers* arrayOfMarker, int* Step, int *k, char* currname, int* arrayOfFunc, int* NumFunc, int* returns, int* numCalls)
 {
+	bool Flag = false;
 	switch (*((long*)comm))
 	{
+
+#define DEF_CMD(name, num, count)\
+	case name: commandBuff[(*j)++] = num; break;
+#define JMP_CMD(name, num, count)\
+	case name: JUMP_ASM(num);
+
+#include "enum_comm.h"
+
+#undef DEF_CMD
+#undef JMP_CMD
+
 	case push:
 		assembly_push(i, buffer, j, commandBuff, val);
 		break;
 
-	case pop: commandBuff[(*j)++] = 2; break;
-	case add: commandBuff[(*j)++] = 3; break;
-	case sub: commandBuff[(*j)++] = 4; break;
-	case mul: commandBuff[(*j)++] = 5; break;
-	case divi: commandBuff[(*j)++] = 6; break;
-	case end: commandBuff[(*j)++] = 7; break;
-	case out: commandBuff[(*j)++] = 8; break;
-	case sqr: commandBuff[(*j)++] = 9; break;
-	case ja:
-		JUMP_ASM(11);
-	case jae:
-		JUMP_ASM(12);
-	case jb:
-		JUMP_ASM(13);
-	case jbe:
-		JUMP_ASM(14);
-	case je:
-		JUMP_ASM(15);
-	case jne:
-		JUMP_ASM(16);
-	case jmp:
-		JUMP_ASM(17);
-	default:
-		if (comm[1] == ':')
+	case pop:
+		(*i) += 1;
+		switch (buffer[(*i)])
 		{
-			(*Step)--;
-			if (arrayOfMarker[comm[0] - '0'] != 0)
-				Nerror = BUCELL;
-			else arrayOfMarker[comm[0] - '0'] = (*Step);
+		case 'a':commandBuff[(*j)++] = 18; break;
+		case 'b':commandBuff[(*j)++] = 21; break;
+		case 'c':commandBuff[(*j)++] = 22; break;
+		case 'd':commandBuff[(*j)++] = 23; break;
+		default: commandBuff[(*j)++] = 2; break;
 		}
+		/*if (buffer[(*i)] != 'a')
+			commandBuff[(*j)++] = 2;
+		else
+			commandBuff[(*j)++] = 18;*/
+		(*i)++;
+		break;
+	case out: commandBuff[(*j)++] = 8; break;
+	case call:
+		arrayOfFunc[(*NumFunc)++] = *j;
+		commandBuff[(*j)++] = 19;								
+			(*k) = 0;												
+		while (buffer[++(*i)] != '\r')							
+			currname[(*k)++] = buffer[(*i)];
+		returns[(*numCalls)++] = (*Step) + 1;
+		for (int l = 0; l < SIZEOFMARKARRAY; l++)				
+		{														
+		if (!strcmp(arrayOfMarker[l].name, currname))		
+		{													
+		commandBuff[(*j)++] = arrayOfMarker[l].numb;	
+		Flag = true;									
+		break;											
+		}												
+		}													
+		if (!Flag) Nerror = BUCELL;								
+			break;
+
+		//JUMP_ASM(19);
+	case ret:
+		commandBuff[(*j)++] = 17;
+		commandBuff[(*j)++] = returns[(*numCalls) - 1];
+		//commandBuff[(*j)++] = 20;
+		//commandBuff[(*j)++] = arrayOfFunc[--(*NumFunc)];
+		i = i;
+		break;
+	case jmp: JUMP_ASM(17);
+	default:
+		(*Step)--;
+		;
 	}
 	return OK;
 }
-
 
 int* moreSize(int* commandBuff, int size)
 {
 	int i = 0;
 	int* commandBuff_old = (int*)calloc(size, sizeof(int));
-
+	if (commandBuff == NULL) Nerror = MEMERR;
+	PrintError(__LINE__);
 	while (i < size)
 		commandBuff_old[i] = commandBuff[i];
 	commandBuff = (int*)realloc(commandBuff, size * 2 * sizeof(int));
+	if (commandBuff == NULL) Nerror = MEMERR;
+	PrintError(__LINE__);
 	while (i < size)
 		commandBuff[i] = commandBuff_old[i];
 
 	return commandBuff;
 }
-
-//void code()
-//{
-//	char* x = "pu";
-//	printf("push %d \n", (int)x[0] * (int)x[1]);
-//	x = "po";
-//	printf("pop %d \n", (int)x[0] * (int)x[1]);
-//	x = "ad";
-//	printf("add %d \n", (int)x[0] * (int)x[1]);
-//	x = "mu";
-//	printf("mull %d \n", (int)x[0] * (int)x[1]);
-//	x = "su";
-//	printf("sub %d \n", (int)x[0] * (int)x[1]);
-//	x = "div";
-//	printf("div %d \n", (int)x[0] * (int)x[1]);
-//	x = "end";
-//	printf("end %d \n", (int)x[0] * (int)x[1]);
-//}
 
 void PrintHelp()
 {
@@ -275,7 +368,7 @@ void PrintHelp()
 
 void PrintVersion()
 {
-	printf("Version 1.0.0 \n");
+	printf("Version 1.2.0 \n");
 }
 
 char* ReadComm(_TCHAR* argv)
@@ -293,20 +386,44 @@ char* ReadComm(_TCHAR* argv)
 		rewind(filein);
 
 		char *buffer = new char[Textlen + 1];
-		//char *buffer = (char*)calloc(Textlen + 1, sizeof(*buffer));
-		assert(buffer);
+		//assert(buffer);
 		if (buffer == NULL)
 			Nerror = MEMERR;
+		PrintError(__LINE__);
 
 		fread((char*)buffer, Textlen, sizeof(*buffer), filein);
 		if (buffer == 0) Nerror = FILEERR;
-		//ErrPrint(Nerror);
+		PrintError(__LINE__);
+
 		if (fclose(filein) == -1) perror("Error with closing file\n");
 		fclose(filein);
 		return buffer;
 	}
 	else
 		Nerror = NOFILE;
+	PrintError(__LINE__);
 	return "-1";
 
 }
+
+void PrintError(int line)
+{
+	if (Nerror != 0)
+	{
+		printf("On <%d> line you have such trouble:\n");
+		switch (Nerror)
+		{
+		case 1: printf("No input file. Try again.\n"); break;
+		case 2: printf("Problems with memmory alloc.\n"); break;
+		case 3: printf("Problems with opening file.\n"); break;
+		case 4: printf("Too much same markers.\n"); break;
+		case 5: printf("Error with pointers, check transfer.\n"); break;
+			default:
+				break;
+		}
+	}
+}
+
+
+
+

@@ -1,0 +1,60 @@
+push 1
+pop ax
+push 2
+pop bx
+push 4
+pop cx
+push bx
+push bx
+mul
+pop dx
+push ax
+push cx
+mul
+push 4
+mul
+sub
+pop dx
+push 0
+ja good
+je norm
+jb zero
+good:
+push dx
+sqrt
+pop dx
+push ax
+push 2
+mul
+pop ax
+push 0
+push bx
+sub
+push dx
+add
+push ax
+div
+out
+push 0
+push bx
+sub
+push dx
+sub
+push ax
+div
+out
+jmp stop
+norm:
+push 0
+push bx
+sub
+push ax
+push 2
+mul
+div
+out
+jmp stop
+zero:
+err
+stop:
+end
