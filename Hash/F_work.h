@@ -1,3 +1,7 @@
+#include <cstring>
+#include <stdlib.h>
+
+const char* wtoc(const wchar_t* w_string);
 void PrintError(int line);
 int Nerror = 0;
 
@@ -5,10 +9,10 @@ enum ErrorNum { NOFILE = 1, MEMERR, FILEERR, BUCELL, PTRERR, HASHERR };
 
 char* ReadFile(_TCHAR* argv)
 {
-	const char* argv1 = "hash_works.txt";
+	//const char* argv1 = "hash_works.txt";
 	FILE *filein = NULL;
-	//errno_t err = fopen_s(&filein, wtoc(argv), "rb");
-	errno_t err = fopen_s(&filein, argv1, "rb");
+	errno_t err = fopen_s(&filein, wtoc(argv), "rb");
+	//errno_t err = fopen_s(&filein, argv1, "rb");
 
 	if (filein != NULL)
 	{
@@ -54,6 +58,13 @@ void PrintError(int line)
 			break;
 		}
 	}
+}
+
+const char* wtoc(const wchar_t* w_string)
+{
+	const char* argvName = (char*)calloc(wcslen(w_string), sizeof(argvName));
+	size_t len = wcstombs((char*)argvName, w_string, wcslen(w_string));
+	return argvName;
 }
 
 int IsPunct(char* string, int numb)

@@ -1,7 +1,17 @@
 
 
 #define OK 1
+#define BAD 0
 #define SIZEOFWORD 35
+
+int ListError(int line)
+{
+	FILE* flog = NULL;
+	errno_t err = fopen_s(&flog, "Log. txt", "a");
+
+	fprintf(flog,"List was corrupted at <%d> line", line);
+	return BAD;
+}
 
 struct value
 {
@@ -31,9 +41,12 @@ public:
 	int addHead(char* value);
 	int addTail(char* value);
 	int show();
+	int List_Ok();
 	int show(int num);
 	int delet(int num);
+	node* Find(char* val);
 	node* Elem(int num);
+	int show(node* Elem);
 
 	~List();
 };
@@ -65,8 +78,14 @@ node* List::Elem(int num)
 	return tmpElem;
 }
 
-
-
+node* List::Find(char* val)
+{
+	node* tmpElem = new node;
+	tmpElem = head;
+	while (strcmp(tmpElem->val, val))
+		tmpElem = tmpElem->next;
+	return tmpElem;
+}
 
 int List::addHead(char* value)
 {
@@ -89,18 +108,20 @@ int List::addTail(char* value)
 {
 	node* newElem = new node;
 	assert(newElem);
-	if (size == 0)
-		strcpy(tail->val,value);
-	else
-	{
-		tail->next = newElem;
-		strcpy(newElem->val,value);
-		newElem->prev = tail;
-		newElem->next = NULL;
-		tail = newElem;
-	}
-	size++;
+	if (!List_Ok()) { ListError(__LINE__);  return BAD; }
+		if (size == 0)
+			strcpy(tail->val, value);
+		else
+		{
+			tail->next = newElem;
+			strcpy(newElem->val, value);
+			newElem->prev = tail;
+			newElem->next = NULL;
+			tail = newElem;
+		}
+		size++;
 	return OK;
+	
 }
 
 int List::delet(int num)
@@ -119,6 +140,21 @@ int List::delet(int num)
 
 	delete curElem;
 
+	return OK;
+}
+
+int List::List_Ok()
+{
+	node* curElem = new node;
+	curElem = head;
+	assert(curElem);
+	if (head != tail)
+	while (curElem->next != tail)
+	{
+		if (curElem->next->prev != curElem)
+			return BAD;
+		curElem = curElem->next;
+	}
 	return OK;
 }
 

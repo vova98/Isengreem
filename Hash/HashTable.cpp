@@ -11,7 +11,7 @@
 
 typedef int (*func)(const char*) ;
 
-const int SIZEOFTABLE = 30;
+const int SIZEOFTABLE = 10;
 const int SIZEOFFILENAME = 20;
 const unsigned int FNV_PRIME = 115249;
 //stupid
@@ -30,7 +30,9 @@ int hash5(const char* word);
 int hashing(const char*, int(*hash1)(const char*), const char*);
 int hashing(const char* buffer, int* CountOfHashing, func f);
 int hash1(const char* word);
+
 void clearList(List list);
+int ShowElem(node* Elem);
 char* takeWord(const char* buffer, int* i, char* tmpStr);
 int PrintHash(const char* fileout, int* CountOfHashing);
 
@@ -38,7 +40,7 @@ int _tmain(int argc, _TCHAR* argv[])
 {
 	//List* list1 = new List[SIZEOFTABLE];
 	//List* list1 = (List*)calloc(SIZEOFTABLE,sizeof(*list1));
-	const char* buffer = ReadFile(argv[0]);
+	const char* buffer = ReadFile(argv[1]);
 	const char* word = {};
 	int* CountOfHahing = (int*)calloc(SIZEOFTABLE, sizeof(CountOfHahing));
 	
@@ -60,7 +62,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		HASHING(4);
 		HASHING(5);
 
-#undef HASHING(num)
+#undef HASHING
 
 		/*if (!(hashing(buffer, CountOfHahing, table, hash0))) Nerror = HASHERR;
 		if (!(PrintHash(fileout, CountOfHahing))) Nerror = FILEERR;*/
@@ -86,7 +88,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	list1->show();
 	printf("---------------------\n");
 	list1->show(1);*/
-	table[1].show();
+	//table[1].show();
 	delete list1;
 	delete[]table;
 	return 0;
@@ -117,7 +119,7 @@ int hashing(const char* buffer, int* CountOfHashing, func f)
 	char tmpStr[SIZEOFWORD] = "";
 	int Firstly = 0;
 	List* table = new List[SIZEOFTABLE];
-	printf("----------------------\n");
+	//printf("----------------------\n");
 	while (buffer[j] != '\0' && buffer[j] > 0)
 	{
 		if (!(takeWord(buffer, &j, tmpStr))) Nerror = PTRERR;
@@ -125,20 +127,31 @@ int hashing(const char* buffer, int* CountOfHashing, func f)
 		hash = f(tmpStr) % SIZEOFTABLE;
 		hash = hash % SIZEOFTABLE;
 		//printf("hash = %d \n", hash);//debug
-		table[hash].addTail(tmpStr);
+		if (!(table[hash].addTail(tmpStr))) goto breakpoint;
 		//table[hash].show();//debug
 		CountOfHashing[hash]++;
-		/*printf("Table - ");
-		for (int i = 0; i < SIZEOFTABLE; i++)
-			printf("<%d> ", CountOfHashing[i]);
-		printf("\n");*/
 		memset(tmpStr, '\0', SIZEOFTABLE);
 
 		while (buffer[j] == ' ' || buffer[j] == '\r' || buffer[j] == '\n')
 			j++;
 	}
-	/*for (int i = 0; i < SIZEOFTABLE; i++)
-		clearList(table[i]);*/
+
+	char* ShowFind = "wei";
+	ShowElem(table[f(ShowFind) % SIZEOFTABLE].Find(ShowFind));
+	return OK;
+breakpoint:
+	return BAD;
+}
+
+int ShowElem(node* Elem)
+{
+	assert(Elem);
+
+	printf("value = <%s> \n"
+		"   curr - <%d> \n"
+		"   next - <%d> \n"
+		"   prev - <%d> \n\n", Elem->val, Elem, Elem->next, Elem->prev);
+
 	return OK;
 }
 
