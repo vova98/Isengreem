@@ -44,20 +44,26 @@ char* ReadFile(_TCHAR* argv)
 
 void PrintError(int line)
 {
+	FILE* ferr = NULL;
+	errno_t err = fopen_s(&ferr, "LOG.txt", "a");
+
 	if (Nerror != 0)
 	{
-		printf("On <%d> line you have such trouble:\n", line);
+		fprintf(ferr,"Time, %s \n"
+			"On <%d> line you have such trouble:\n", __TIME__, line);
 		switch (Nerror)
 		{
-		case 1: printf("No input file. Try again.\n"); break;
-		case 2: printf("Problems with memmory alloc.\n"); break;
-		case 3: printf("Problems with opening file.\n"); break;
-		case 4: printf("Too much same markers.\n"); break;
-		case 5: printf("Error with pointers, check transfer.\n"); break;
+		case 1: fprintf(ferr,"No input file. Try again.\n"); break;
+		case 2: fprintf(ferr,"Problems with memmory alloc.\n"); break;
+		case 3: fprintf(ferr,"Problems with opening file.\n"); break;
+		case 4: fprintf(ferr,"Too much same markers.\n"); break;
+		case 5: fprintf(ferr,"Error with pointers, check transfer.\n"); break;
+		case 6: fprintf(ferr, "Problems in hash-function.\n"); break;
 		default:
 			break;
 		}
 	}
+	fclose(ferr);
 }
 
 const char* wtoc(const wchar_t* w_string)

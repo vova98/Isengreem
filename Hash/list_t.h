@@ -73,6 +73,9 @@ node* List::Elem(int num)
 {
 	node* tmpElem = new node;
 	tmpElem = head;
+
+	if (!List_Ok()) { ListError(__LINE__);  return BAD; }
+
 	for (int i = 0; i < num; i++)
 		tmpElem = tmpElem->next;
 	return tmpElem;
@@ -81,8 +84,12 @@ node* List::Elem(int num)
 node* List::Find(char* val)
 {
 	node* tmpElem = new node;
+
+	if (!List_Ok()) { ListError(__LINE__);  return BAD; }
+
+	if (head == NULL) return 0;
 	tmpElem = head;
-	while (strcmp(tmpElem->val, val))
+	while (tmpElem != NULL && strcmp(tmpElem->val, val))
 		tmpElem = tmpElem->next;
 	return tmpElem;
 }
@@ -90,7 +97,10 @@ node* List::Find(char* val)
 int List::addHead(char* value)
 {
 	node* newElem = new node;
+
 	assert(newElem);
+	if (!List_Ok()) { ListError(__LINE__);  return BAD; }
+
 	if (size == 0)
 		strcpy(head->val,value);
 	else
@@ -128,7 +138,9 @@ int List::delet(int num)
 {
 	node* curElem = new node;
 	curElem = Elem(num);
+
 	assert(curElem);
+	if (!List_Ok()) { ListError(__LINE__);  return BAD; }
 
 	curElem->prev->next = curElem->next;
 	curElem->next->prev = curElem->prev;
@@ -139,6 +151,8 @@ int List::delet(int num)
 	//curElem->val = "/0";
 
 	delete curElem;
+
+	if (!List_Ok()) { ListError(__LINE__);  return BAD; }
 
 	return OK;
 }
@@ -162,7 +176,10 @@ int List::show()
 {
 	node* curElem = new node;
 	curElem = head;
+
 	assert(curElem);
+	if (!List_Ok()) { ListError(__LINE__);  return BAD; }
+
 	while (curElem != tail)
 	{
 		assert(curElem);
@@ -184,7 +201,9 @@ int List::show(int num)
 {
 	node* curElem = new node;
 	curElem = Elem(num);
+
 	assert(curElem);
+	if (!List_Ok()) { ListError(__LINE__);  return BAD; }
 
 	printf("value = <%s> \n"
 		"   curr - <%d> \n"

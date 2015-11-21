@@ -11,9 +11,10 @@
 
 typedef int (*func)(const char*) ;
 
-const int SIZEOFTABLE = 10;
+const int SIZEOFTABLE = 20;
 const int SIZEOFFILENAME = 20;
 const unsigned int FNV_PRIME = 115249;
+const unsigned int MAXINT = (pow(2, sizeof(unsigned int)* 8.0) - 1)/FNV_PRIME;
 //stupid
 int hash0(const char* word);
 //first symbol
@@ -51,8 +52,14 @@ int _tmain(int argc, _TCHAR* argv[])
 	/*printf("Enter name of output file\n>");
 	scanf_s("%s\n", &fileout);*/
 	List* table = new List[SIZEOFTABLE];
-#define HASHING(num)															\
-	if (!(hashing(buffer, CountOfHahing, hash##num))) Nerror = HASHERR;	\
+#define HASHING(num)												\
+	if (!(hashing(buffer, CountOfHahing, hash##num)))				\
+	{																\
+		Nerror = HASHERR;											\
+		PrintError(__LINE__);										\
+		system("start LOG.txt");									\
+		return 0;													\
+	}																\
 	if (!(PrintHash(fileout, CountOfHahing))) Nerror = FILEERR;					
 
 		HASHING(0);
@@ -122,8 +129,8 @@ int hashing(const char* buffer, int* CountOfHashing, func f)
 	//printf("----------------------\n");
 	while (buffer[j] != '\0' && buffer[j] > 0)
 	{
-		if (!(takeWord(buffer, &j, tmpStr))) Nerror = PTRERR;
-
+		if (!(takeWord(buffer, &j, tmpStr))) { Nerror = PTRERR; PrintError(__LINE__); }
+		
 		hash = f(tmpStr) % SIZEOFTABLE;
 		hash = hash % SIZEOFTABLE;
 		//printf("hash = %d \n", hash);//debug
@@ -135,9 +142,10 @@ int hashing(const char* buffer, int* CountOfHashing, func f)
 		while (buffer[j] == ' ' || buffer[j] == '\r' || buffer[j] == '\n')
 			j++;
 	}
-
-	char* ShowFind = "wei";
-	ShowElem(table[f(ShowFind) % SIZEOFTABLE].Find(ShowFind));
+	//char* ShowFind = "wehjhgx";
+	//int index = f(ShowFind) % SIZEOFTABLE;
+	//if (!ShowElem(table[index].Find(ShowFind))) 
+	//	goto breakpoint;
 	return OK;
 breakpoint:
 	return BAD;
@@ -145,7 +153,7 @@ breakpoint:
 
 int ShowElem(node* Elem)
 {
-	assert(Elem);
+	if (Elem == NULL) return BAD;// assert(Elem);
 
 	printf("value = <%s> \n"
 		"   curr - <%d> \n"
@@ -207,9 +215,11 @@ int hash5(const char* word)
 	int WordLen = strlen(word);
 	for (int i = 0; i < WordLen; i++)
 	{
-		HashVal *= FNV_PRIME;
+
+		if (HashVal < MAXINT)
+			HashVal *= FNV_PRIME;
 		HashVal ^= (unsigned int)word[i];
-		HashVal = (HashVal >> 1) | (HashVal << 31);
+		//HashVal = (HashVal >> 1) | (HashVal << 31);
 	}
 	return HashVal;
 }
