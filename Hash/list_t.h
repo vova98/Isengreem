@@ -160,8 +160,9 @@ int List::delet(int num)
 int List::List_Ok()
 {
 	node* curElem = new node;
-	curElem = head;
 	assert(curElem);
+	curElem = head;
+	
 	if (head != tail)
 	while (curElem->next != tail)
 	{
