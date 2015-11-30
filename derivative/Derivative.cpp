@@ -72,13 +72,23 @@ struct node
 	int type;
 	node* left;
 	node* right;
-	node() :data{}, type{}, left(NULL), right(NULL){}
+	node() :data(""), type(), left(NULL), right(NULL){}
+};
+
+struct variable
+{
+	char* data;
+	double value;
+	double sigma;
+	int count;
+	variable() :data(), value(), sigma(), count(){}
 };
 
 enum Types { T_var = 1, T_op = 2, T_num = 3, T_func = 4 };
 
 const char *s = NULL;
 const int LENGTHOFWORD = 5;
+const int VARCOUNT = 10;
 const double EPS = 0.001;
 const int Radix = 10;
 //node* NodeCtor(int type, const char op, node* left, node* right);
@@ -87,7 +97,13 @@ int PrintTree(node* top, int* count);
 int Print(node* top, FILE* fout);
 int ÑreateTeXFile(FILE *fout);
 int IsFunc(char* val);
+void DestroyTree(node* vert);
 node* Cleaning(node* top, int* WasCleaned);
+void FindVariables(node* tree, int* count, variable* Vars);
+node* CreateTotalDer(variable* Vars, int CountofVars);
+node* CreateTreatSumm(node* Left, node* Right, variable* Vars, int* count, int Numb);
+void CopyTree(node* dest, node* source);
+node* CreatePower(variable* Vars, int* count);
 node* GetS();
 node* GetN();
 node* GetT();
@@ -112,7 +128,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	//if (!ÑreateTeXFile(fout)) return 0;
 
 
-	node* Tree = GetG0(buffer);
+	node* Tree = GetG0(buffer);//Taking tree
 	if (Tree == NULL) { printf("Syntax ERROR\n"); return 0; }
 	PrintTree(Tree, &count);
 	printf("\n-----------------------\n\n");
@@ -132,33 +148,255 @@ int _tmain(int argc, _TCHAR* argv[])
 		PrintTree(Cleared_tree, &count);
 		printf("\n-----------------------\n\n");
 	}
+		variable* Vars = new variable[10];
+		int CountOfVars = 0;
+		FindVariables(Cleared_tree, &CountOfVars, Vars);
+		printf("\n\nVARIABLES\n\n");
+		for (int i = 0; i < CountOfVars; i++)
+			printf("<%s> count = %d\n", Vars[i].data, Vars[i].count);
+		printf("\n\n");
 
-	printf("TAKING THE DERIVATIVE\n\n");
-	node* Derivated_tree = Derivation(Cleared_tree);
-	PrintTree(Derivated_tree, &count);
-	printf("\n-----------------------\n\n");
-	Print(Derivated_tree, fout);
-	fprintf(fout, "\n\n");
+		char Key = '\0';
+		printf("What do you want to do with your function:\n"
+			"1. Take a partial derivative (P)\n"
+			"2. Take a total derivative (T)\n"
+			">");
+		scanf("%c", &Key);
 
-	printf("CLEANING DERIVATIVE TREE\n\n");
-	WasCleaned = 1;
-	node* Cleared_Derivated_tree = Derivated_tree;
-	while (WasCleaned)
-	{
-		WasCleaned = 0;
-		Cleared_Derivated_tree = Cleaning(Cleared_Derivated_tree, &WasCleaned);
-		count = 0;
-		PrintTree(Cleared_Derivated_tree, &count);
-		printf("\n-----------------------\n\n");
+		if (Key == 'P')
+		{
+
+			printf("TAKING THE DERIVATIVE\n\n");
+			node* Derivated_tree = Derivation(Cleared_tree);
+			PrintTree(Derivated_tree, &count);
+			printf("\n-----------------------\n\n");
+			Print(Derivated_tree, fout);
+			fprintf(fout, "\n\n");
+
+			printf("CLEANING DERIVATIVE TREE\n\n");
+			WasCleaned = 1;
+			node* Cleared_Derivated_tree = Derivated_tree;
+			while (WasCleaned)
+			{
+				WasCleaned = 0;
+				Cleared_Derivated_tree = Cleaning(Cleared_Derivated_tree, &WasCleaned);
+				count = 0;
+				PrintTree(Cleared_Derivated_tree, &count);
+				printf("\n-----------------------\n\n");
+			}
+			count = 0;
+			printf("CLEANED DERIVATIVE TREE\n\n");
+			PrintTree(Cleared_Derivated_tree, &count);
+			Print(Cleared_Derivated_tree, fout);
+			fprintf(fout, "\nEND OF PROGRAMM\n");
+			fclose(fout);
+			system("start Print.txt");
+			system("pause");
+			return 0;
+		}
+		else
+		{
+			printf("Enter values:\n");
+			for (int i = 0; i < CountOfVars; i++)
+			{
+				printf("\n\t%s = ", Vars[i].data);
+				scanf_s("%lg", &Vars[i].value);
+				printf("\n\terror %s = ", Vars[i].data);
+				scanf_s("%lg", &Vars[i].sigma);
+			}
+			
+			node* TDerivTree = CreateTotalDer(Vars, CountOfVars);
+			count = 0;
+			printf("\n-----------------------\n\n");
+			PrintTree(TDerivTree, &count);
+			printf("\n-----------------------\n\n");
+			printf("CLEANING DERIVATIVE TREE\n\n");
+			WasCleaned = 1;
+			while (WasCleaned)
+			{
+				WasCleaned = 0;
+				TDerivTree = Cleaning(TDerivTree, &WasCleaned);
+				count = 0;
+				PrintTree(TDerivTree, &count);
+				printf("\n-----------------------\n\n");
+			}
+
+		}
+
 	}
-	count = 0;
-	printf("CLEANED DERIVATIVE TREE\n\n");
-	PrintTree(Cleared_Derivated_tree, &count);
-	Print(Cleared_Derivated_tree, fout);
-	fprintf(fout, "\nEND OF PROGRAMM\n");
-	return 0;
+
+node* CreateTotalDer(variable* Vars, int CountofVars)
+{
+	
+	//node* Summ = new node;
+	
+	//node* leftVar  = new node;
+	
+	//node* rightVar = new node;
+	//node* Div = new node;
+	//node* Power = new node;
+	//node* Two = new node;
+	////LeftSumm->left  = (node*)malloc(sizeof(node));
+	////LeftSumm->right = (node*)malloc(sizeof(node));
+	//CREATEDATA(Two);
+	//CREATEDATA(Temp);
+	//CREATEDATA(Power);
+	//CREATEDATA(Div);
+	//CREATEDATA(leftVar);
+	//CREATEDATA(rightVar);
+	//CREATEDATA(Summ);
+	//NODECTOR(Two, "2", T_num, NULL, NULL);
+	node* RightSumm = new node;
+	node* LeftSumm = new node;
+	node* Temp = new node;
+	node* newtop = new node;
+	CREATEDATA(newtop);
+	int count = 0;
+	switch (CountofVars)
+	{
+	case 0: return 0; break;
+	case 1: LeftSumm = CreatePower(Vars, &count); newtop = LeftSumm; break;
+	case 2:
+		LeftSumm = CreatePower(Vars, &count);
+		RightSumm = CreatePower(Vars, &count);
+		NODECTOR(Temp, "+", T_op, LeftSumm, RightSumm);
+		newtop = Temp;
+		break;
+	default:
+		LeftSumm = CreatePower(Vars, &count);
+		RightSumm = CreatePower(Vars, &count);
+		Temp = CreatePower(Vars, &count);
+	/*	node* newtop = new node;
+		CREATEDATA(newtop);*/
+		NODECTOR(newtop, "+", T_op, LeftSumm, RightSumm);
+
+		newtop = CreateTreatSumm(newtop, Temp, Vars, &count, CountofVars);
+	}
+	node* Sqrt = new node;
+	CREATEDATA(Sqrt);
+	node* degree = new node;
+	CREATEDATA(degree);
+	NODECTOR(degree, "0.5", T_num, NULL, NULL);
+	NODECTOR(Sqrt, "^", T_op, newtop, degree);
+	return Sqrt;
+}
+	/*NODECTOR(leftVar, ftoa(Vars[0].sigma), T_num, NULL, NULL);
+	NODECTOR(rightVar, ftoa(Vars[0].value), T_num, NULL, NULL);
+	NODECTOR(Div, "/", T_op, leftVar, rightVar);
+	NODECTOR(Power, "^", T_op, Div, Two);
+	CopyTree(RightSumm, Power);*/
+
+
+
+	//NODECTOR(leftVar, ftoa(Vars[1].sigma), T_num, NULL, NULL);
+	//NODECTOR(rightVar, ftoa(Vars[1].value), T_num, NULL, NULL);
+	//NODECTOR(Div, "/", T_op, leftVar, rightVar);
+	//NODECTOR(Power, "^", T_op, Div, Two);
+	//CopyTree(LeftSumm, Power);
+
+	//NODECTOR(leftVar, ftoa(Vars[2].sigma), T_num, NULL, NULL);
+	//NODECTOR(rightVar, ftoa(Vars[2].value), T_num, NULL, NULL);
+	//NODECTOR(Div, "/", T_op, leftVar, rightVar);
+	//NODECTOR(Power, "^", T_op, Div, Two);
+	//CopyTree(Temp, Power);
+	
+
+	//CopyTree(LeftSumm, Power);
+	//for (int i = 1; i < CountofVars; i++)
+	//{
+	//	/*NODECTOR(leftVar,  ftoa(Vars[i].sigma), T_num, NULL, NULL);
+	//	NODECTOR(rightVar, ftoa(Vars[i].value), T_num, NULL, NULL);
+	//	NODECTOR(Div, "/", T_op, leftVar, rightVar);
+	//	NODECTOR(Power, "^", T_op, Div, Two);
+	//	CopyTree(RightSumm, Power);
+	//	NODECTOR(Summ, "+", T_op, LeftSumm, RightSumm);*/
+
+	//	node* temp = new node;
+	//	//temp->left  = (node*)malloc(sizeof(node));
+	//	//temp->right = (node*)malloc(sizeof(node));
+	//	CREATEDATA(temp);
+	//	CopyTree(temp, Summ);
+
+	//	CopyTree(LeftSumm, temp);
+
+
+	//}
+	
+
+
+node* CreateTreatSumm(node* Left, node* Right, variable* Vars, int* count, int Numb)
+{
+	node* newtop = new node;
+	CREATEDATA(newtop);
+	NODECTOR(newtop, "+", T_op, Left, Right);
+
+	if (*count < Numb)
+	{
+		node* Temp = new node;
+		CREATEDATA(Temp);
+
+		Temp = CreatePower(Vars, count);
+
+		newtop = CreateTreatSumm(newtop, Temp, Vars, count, Numb);
+	}
+	return newtop;
+	
 }
 
+node* CreatePower(variable* Vars, int* count)
+{
+	node* leftVar = new node;
+	node* Temp = new node;
+	node* rightVar = new node;
+	node* Div = new node;
+	node* Power = new node;
+	node* Two = new node;
+	CREATEDATA(Two);
+	CREATEDATA(Temp);
+	CREATEDATA(Power);
+	CREATEDATA(Div);
+	CREATEDATA(leftVar);
+	CREATEDATA(rightVar);
+	NODECTOR(Two, "2", T_num, NULL, NULL);
+
+	NODECTOR(leftVar, ftoa(Vars[*count].sigma), T_num, NULL, NULL);
+	NODECTOR(rightVar, ftoa(Vars[*count].value), T_num, NULL, NULL);
+	NODECTOR(Div, "/", T_op, leftVar, rightVar);
+	NODECTOR(Power, "^", T_op, Div, Two);
+	CopyTree(Temp, Power);
+	(*count)++;
+
+	return Temp;
+
+}
+
+void FindVariables(node* tree, int* count, variable* Vars)
+{
+	int wasFound = 0;
+	if (tree->type == T_var)
+	{
+		for (int i = 0; i < *count; i++)
+		if (IS(tree->data,Vars[i].data))
+		{
+			wasFound = 1;
+			Vars[i].count++;
+			if (tree->left) FindVariables(tree->left, count, Vars);
+			if (tree->right) FindVariables(tree->right, count, Vars);
+		}
+		if (!wasFound)
+		{
+			Vars[*count].data = new char[LENGTHOFWORD]{0};
+			//memset(Vars[*count].data, 0, LENGTHOFWORD);
+			//Vars[*count].data = (char*)calloc(LENGTHOFWORD, sizeof(char));
+			Vars[*count].count = 1;
+			int len = strlen(tree->data);
+			strcpy(Vars[*count].data, tree->data);
+			Vars[(*count)++].data[len] = '\0';
+		}
+	}
+	if (tree->left) FindVariables(tree->left, count, Vars);
+	if (tree->right) FindVariables(tree->right, count, Vars);
+}
 
 int ÑreateTeXFile(FILE *fout)
 {
@@ -344,6 +582,7 @@ node* GetVar()
 	leaf->data[count] = '\0';
 	strcpy(leaf->data, val);
 	leaf->type = T_var;
+
 	return leaf;
 }
 
@@ -426,43 +665,129 @@ node* Derivation(node* top)
 	case T_func:
 		if (IS(TD, "sin"))
 		{
-			int count = 0;
-			strcpy(top->data, "cos");
-			
-			node* left = new node;
-			node* right = new node;
-			NODECTOR(right, LD, T_op, TL->left, TL->right);		
-			NODECTOR(left, TD, T_func, top->left, right);		
-			node* RightDer = Derivation(top->left);
-			
-			node* top = new node;
-			NODECTOR(top, "*", T_op, left, RightDer);
-			
-			TL->left = NULL;
-			return top;
+			node* newtop = new node;
+
+			CREATEDATA(newtop);
+			strcpy(newtop->data, "*");
+
+			newtop->left = (node*)malloc(sizeof(node));
+			newtop->right = (node*)malloc(sizeof(node));
+			CopyTree(newtop->right, top->left);
+			CopyTree(newtop->left, top);
+
+			strcpy(newtop->left->data, "cos");
+
+			newtop->right = Derivation(newtop->right);
+			DestroyTree(top);
+
+			return newtop;
 		}
 		if (IS(TD, "cos"))
 		{
-			strcpy(top->data, "sin");
-			node* left = new node;
-			node* right = new node;
-			NODECTOR(right, LD, T_op, TL->left, TL->right);
 
-			NODECTOR(left, TD, T_func, top->left, right);
-			node* RightDer = Derivation(top->left);
+			node* newtop = new node;
 
-			node* NewLeft = new node;
-			CREATEDATA(NewLeft);
-			NODECTOR(NewLeft, "-", T_op, NULL, left);
+			CREATEDATA(newtop);
+			strcpy(newtop->data,"*");
+			newtop->type = T_op;
+			newtop->left = (node*)malloc(sizeof(node));
+			newtop->right = (node*)malloc(sizeof(node));
+			CopyTree(newtop->right, top->left);
+			CopyTree(newtop->left, top);
 
-			node* top = new node;
-			NODECTOR(top, "*", T_op, NewLeft, RightDer);
-			TL->right->left = NULL;
-			return top;
+			strcpy(newtop->left->data, "sin");
+
+			newtop->right = Derivation(newtop->right);
+			DestroyTree(top);
+
+			return newtop;
+		}
+		if (IS(TD, "ln"))
+		{
+			node* newtop = new node;
+
+			CREATEDATA(newtop);
+			strcpy(newtop->data, "/");
+			newtop->type = T_op;
+			newtop->left = (node*)malloc(sizeof(node));
+			newtop->right = (node*)malloc(sizeof(node));
+			CopyTree(newtop->left, top->left);
+			CopyTree(newtop->right, top->left);
+
+			newtop->left = Derivation(newtop->left);
+			DestroyTree(top);
+
+			return newtop;
+		}
+		if (IS(TD, "tg"))
+		{
+			strcpy(top->data, "cos");
+			node* newtop = new node;
+			CREATEDATA(newtop);
+
+			strcpy(newtop->data, "/");
+			newtop->type = T_op;
+			newtop->left = (node*)malloc(sizeof(node));
+			newtop->right = (node*)malloc(sizeof(node));
+			CopyTree(newtop->left, top->left);
+			//CopyTree(newtop->right, top->left);
+
+			node* newRight = new node;
+			CREATEDATA(newRight);
+			strcpy(newRight->data, "^");
+			newRight->type = T_op;
+			newRight->left = (node*)malloc(sizeof(node));
+			newRight->right = (node*)malloc(sizeof(node));
+			CopyTree(newRight->left, top);
+			CREATEDATA(newRight->right);
+			NODECTOR(newRight->right, "2", T_num, NULL, NULL);
+			//strcpy(newRight->right->data, "2");
+
+			newtop->right = newRight;
+
+			newtop->left = Derivation(newtop->left);
+			DestroyTree(top);
+
+			return newtop;
 		}
 	default: return top;
 	}
 
+}
+
+void DestroyTree(node* vert)
+{
+	delete[]vert->data;
+	vert->type = NULL;
+	while (vert->left)  { 
+		DestroyTree(vert->left);	
+		vert->left  = NULL; 
+	}
+	while (vert->right) { 
+		DestroyTree(vert->right);	
+		vert->right = NULL;
+	}
+	vert = NULL;
+}
+
+void CopyTree(node* dest, node* source)
+{
+	//dest = (node*)malloc(sizeof(node));
+	CREATEDATA(dest);
+	strcpy(dest->data, source->data);
+	dest->type = source->type;
+	dest->left = NULL;
+	dest->right = NULL;
+	if (source->left != NULL && source->left->data != NULL)
+	{
+		dest->left = (node*)malloc(sizeof(node));
+		CopyTree(dest->left, source->left);
+	}
+	if (source->right != NULL && source->left->data != NULL)
+	{
+		dest->right = (node*)malloc(sizeof(node));
+		CopyTree(dest->right, source->right);
+	}
 }
 
 node* Cleaning(node* top, int* WasCleaned)
@@ -531,9 +856,9 @@ node* Cleaning(node* top, int* WasCleaned)
 				// constant folding
 				else if (LT == T_num && RT == T_num)
 				{
-					top->data = new char[LENGTHOFWORD];
-					top->data = FTOA(LD, RD, *);
-					NODECTOR(top, top->data, T_num, NULL, NULL);
+					double tmp = atof(LD) * atof(RD);
+					char* newData = ftoa(tmp);
+					NODECTOR(top, newData, T_num, NULL, NULL);
 					*WasCleaned = 1;
 				}
 			}
@@ -546,9 +871,11 @@ node* Cleaning(node* top, int* WasCleaned)
 				}
 				else if (LT == T_num && RT == T_num)
 				{
-					top->data = new char[LENGTHOFWORD];
-					top->data = FTOA(LD, RD, / );
-					NODECTOR(top, top->data, T_num, NULL, NULL);
+					double tmp = atof(LD) / atof(RD);
+					char* newData = ftoa(tmp);
+					/*top->data = new char[LENGTHOFWORD];
+					top->data = FTOA(LD, RD, / );*/
+					NODECTOR(top, newData, T_num, NULL, NULL);
 					*WasCleaned = 1;
 				}
 				else if (IS(RD, "1"))
@@ -561,7 +888,7 @@ node* Cleaning(node* top, int* WasCleaned)
 			{
 				if (LT == T_num && RT == T_num)
 				{
-					float tmp = pow(atof(LD), atof(RD));
+					double tmp = pow(atof(LD), atof(RD));
 					char* newData = ftoa(tmp);
 					NODECTOR(top, newData, T_num, NULL, NULL);
 					*WasCleaned = 1;
