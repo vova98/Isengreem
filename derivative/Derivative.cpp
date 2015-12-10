@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cmath>
 #include "F_work.h"
+#include "Derivation Head.h"
 
 
 #define OK 1
@@ -10,8 +11,6 @@
 #define OP "operator"
 #define NUM "number"
 
-#define CREATEDATA(vertex)		\
-	(char*)vertex->data = (char*)calloc(LENGTHOFWORD, sizeof(char));
 
 #define LD top->left->data
 #define RD top->right->data
@@ -25,12 +24,7 @@
 
 #define FTOA(Left, Right, op) top->data = ftoa(atof(Left) op atof(Right));
 
-#define NODECTOR(vertex, Data, Type, Left, Right)	\
-	vertex->type = Type;							\
-	CREATEDATA(vertex)								\
-	strcpy(vertex->data, Data);						\
-	vertex->left = Left;							\
-	vertex->right = Right;
+
 
 
 #define DER_MUL												\
@@ -54,65 +48,10 @@
 	NODECTOR(LeftMul, "*", T_op, TL, newRight);				\
 	NODECTOR(RightMul, "*", T_op, TR, newLeft);	
 
-
-#define MAKENODE(oper)		\
-	top->type = oper;		\
-	top->left = leaf;		\
-	top->right = leaf2;		\
-	top->data[0] = op;		\
-	leaf = top;
-
-
-#define FOLDING(op)
-
-
-struct node
-{
-	char* data;
-	int type;
-	node* left;
-	node* right;
-	node() :data(""), type(), left(NULL), right(NULL){}
-};
-
-struct variable
-{
-	char* data;
-	double value;
-	double sigma;
-	int count;
-	variable() :data(), value(), sigma(), count(){}
-};
-
-enum Types { T_var = 1, T_op = 2, T_num = 3, T_func = 4 };
-
-const char *s = NULL;
-const int LENGTHOFWORD = 5;
-const int VARCOUNT = 10;
-const double EPS = 0.001;
-const int Radix = 10;
-//node* NodeCtor(int type, const char op, node* left, node* right);
-node* GetG0(const char* buffer);
-int PrintTree(node* top, int* count);
-int Print(node* top, FILE* fout);
-int СreateTeXFile(FILE *fout);
-int IsFunc(char* val);
-void DestroyTree(node* vert);
-node* Cleaning(node* top, int* WasCleaned);
-void FindVariables(node* tree, int* count, variable* Vars);
-node* CreateTotalDer(variable* Vars, int CountofVars);
-node* CreateTreatSumm(node* Left, node* Right, variable* Vars, int* count, int Numb);
-void CopyTree(node* dest, node* source);
-node* CreatePower(variable* Vars, int* count);
-node* GetS();
-node* GetN();
-node* GetT();
-node* GetE();
-node* GetP();
-node* GetVar();
-node* GetFunc(char* val);
-node* Derivation(node* top);
-
+char** Phrases = NULL;
+//////////////////////////////////////////////////////////////////////////
+////////////////MAIN/////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
 int _tmain(int argc, _TCHAR* argv[])
 {
 	int count = 0;
@@ -122,10 +61,20 @@ int _tmain(int argc, _TCHAR* argv[])
 	else buffer = ReadFile(argv[1]);
 	//s = (char*)buffer;
 
-	FILE* fout = NULL;
-	errno_t err = fopen_s(&fout, "Print.txt", "a");
+	errno_t err = fopen_s(&FteX, "Laba.tex", "w");//cleaning of the file
+	fclose(FteX);
+	//FILE* fout = NULL;
+	err = fopen_s(&FteX, "Laba.tex", "a");
 
-	//if (!СreateTeXFile(fout)) return 0;
+	if (!СreateTeXFile(FteX)) return 0;
+	char* TMPBUFF = ReadFile(L"HeaderLaba.txt");
+	PrintFile(TMPBUFF, FteX);
+
+	//Taking phrases for laba
+	FILE* fphrases = NULL;
+	err = fopen_s(&fphrases, "Phrases.txt", "rb");
+	TMPBUFF = ReadFile(L"Phrases.txt");
+	Phrases = bufferToArray(TMPBUFF);//buffer to Array
 
 
 	node* Tree = GetG0(buffer);//Taking tree
@@ -133,9 +82,9 @@ int _tmain(int argc, _TCHAR* argv[])
 	PrintTree(Tree, &count);
 	printf("\n-----------------------\n\n");
 	count = 0;
-	fprintf(fout, "\nSTART OF PROGRAMM AT <%s>\n", __TIME__);
-	Print(Tree, fout);
-	fprintf(fout, "\n\n");
+	//fprintf(FteX, "\nSTART OF PROGRAMM AT <%s>\n", __TIME__);
+	//Print(Tree, FteX);
+	//fprintf(FteX, "\n\n");
 
 	printf("CLEANING ORIGINAL TREE\n\n");
 	int WasCleaned = 1;
@@ -166,14 +115,15 @@ int _tmain(int argc, _TCHAR* argv[])
 		if (Key == 'P')
 		{
 
-			printf("TAKING THE DERIVATIVE\n\n");
+			//fprintf(FteX, "\\bf{ \\large{ Берем производную } }\n\n");
 			node* Derivated_tree = Derivation(Cleared_tree);
 			PrintTree(Derivated_tree, &count);
 			printf("\n-----------------------\n\n");
-			Print(Derivated_tree, fout);
-			fprintf(fout, "\n\n");
+			/*Print(Derivated_tree, FteX);
+			fprintf(FteX, "\n\n");*/
 
 			printf("CLEANING DERIVATIVE TREE\n\n");
+			//fprintf(FteX, "\\bf{ \\large{ Производим анализ полученой формулы и упрощаем её } }\n\n");
 			WasCleaned = 1;
 			node* Cleared_Derivated_tree = Derivated_tree;
 			while (WasCleaned)
@@ -186,13 +136,10 @@ int _tmain(int argc, _TCHAR* argv[])
 			}
 			count = 0;
 			printf("CLEANED DERIVATIVE TREE\n\n");
+			//fprintf(FteX, "\\bf{ \\large{ Упрощенное выражение } }\n\n");
 			PrintTree(Cleared_Derivated_tree, &count);
-			Print(Cleared_Derivated_tree, fout);
-			fprintf(fout, "\nEND OF PROGRAMM\n");
-			fclose(fout);
-			system("start Print.txt");
-			system("pause");
-			return 0;
+			/*Print(Cleared_Derivated_tree, FteX);
+			fprintf(FteX, "\nEND OF PROGRAMM\n");*/
 		}
 		else
 		{
@@ -206,11 +153,12 @@ int _tmain(int argc, _TCHAR* argv[])
 			}
 			
 			node* TDerivTree = CreateTotalDer(Vars, CountOfVars);
+			//Print(TDerivTree, FteX);
 			count = 0;
 			printf("\n-----------------------\n\n");
 			PrintTree(TDerivTree, &count);
 			printf("\n-----------------------\n\n");
-			printf("CLEANING DERIVATIVE TREE\n\n");
+			//fprintf(FteX, "\\bf{ \\large{ Производим анализ полученой формулы и упрощаем её } }\n\n");
 			WasCleaned = 1;
 			while (WasCleaned)
 			{
@@ -220,8 +168,15 @@ int _tmain(int argc, _TCHAR* argv[])
 				PrintTree(TDerivTree, &count);
 				printf("\n-----------------------\n\n");
 			}
-
+			
+			PrintInTex(TDerivTree, FteX);
+			
 		}
+		fprintf(FteX, "\n\\end{document}");
+		fclose(FteX);
+		system("start Laba.tex");
+		system("pause");
+		return 0;
 
 	}
 
@@ -320,7 +275,7 @@ node* CreateTotalDer(variable* Vars, int CountofVars)
 	//	CopyTree(LeftSumm, temp);
 
 
-	//}
+	//
 	
 
 
@@ -398,29 +353,86 @@ void FindVariables(node* tree, int* count, variable* Vars)
 	if (tree->right) FindVariables(tree->right, count, Vars);
 }
 
-int СreateTeXFile(FILE *fout)
+int СreateTeXFile(FILE *FteX)
 {
-	fprintf(fout, "\documentclass[12pt,a4paper]{scrartcl}"
-		"\\usepackage[utf8]{inputenc}"
-		"\\usepackage[english, russian]{babel}"
-		"\\usepackage{ indentfirst }"
-		"\\usepackage{ misccorr }"
-		"\\usepackage{ graphicx }"
-		"	\\usepackage{ amsmath }");
+	fprintf(FteX, "\\documentclass[12pt,a4paper]{scrartcl}\n"
+		"\\usepackage[CP1251]{inputenc}\n"
+		"\\usepackage[english, russian]{babel}\n"
+		"\\usepackage{ indentfirst }\n"
+		"\\begin{document}\n");
 	return OK;
 }
-/*VERIFICATOR*/
 
-//int TreeVerificator(node* top)
-//{
-//	if (top == NULL) return 0;
-//
-//	if ()
-//
-//	if (top->left  != NULL) TreeVerificator(top->left);
-//	if (top->right != NULL) TreeVerificator(top->right;
-//
-//}
+int PrintExpress(node* top)
+{
+	if (!top) return NULL;
+
+	if (top->type == T_func)
+	{
+		fprintf(FteX, "\\%s", top->data);
+		//fprintf(FteX, "(");
+		if (top->right) PrintExpress(top->right);
+		else Print(top->left, FteX);
+		//fprintf(FteX, ")");
+	}
+	else if (top->type == T_op)
+	{
+		if (IS(TD, "/"))  
+		{ 
+			fprintf(FteX, "\\frac{"); 
+			PrintExpress(top->left); 
+			fprintf(FteX, "}{"); 
+			PrintExpress(top->right); 
+			fprintf(FteX, "}\n");
+		}
+		if (IS(TD, "^"))
+		{
+			if (IS(RD, "0.5"))
+			{
+				fprintf(FteX, "\\sqrt{");
+				PrintExpress(top->left);
+				fprintf(FteX, "}\n");
+			}
+			else 
+			{
+				PrintExpress(top->left);
+				fprintf(FteX, "^{");
+				PrintExpress(top->right);
+				fprintf(FteX, "}\n");
+			}
+		}
+		else
+		{
+			if (top->left) { fprintf(FteX, "("); PrintExpress(top->left); }
+			fprintf(FteX, "%s", top->data);
+			if (top->right) { PrintExpress(top->right); fprintf(FteX, ")"); }
+		}
+	}
+	else
+	{
+		if (top->left) { fprintf(FteX, "("); PrintExpress(top->left); }
+		fprintf(FteX, "%s", top->data);
+		if (top->right) { PrintExpress(top->right); fprintf(FteX, ")"); }
+	}
+	return OK;
+}
+
+int PrintInTex(node* top, FILE* FteX)
+{
+	if (!top) return NULL;
+	int i = rand() % *countOfString;
+	int j = 0;
+	if (Phrases[i])
+	{
+		while (Phrases[i][j] != '\n')
+			fprintf(FteX, "%c", Phrases[i][j++]);
+		fprintf(FteX, "\n \\[\n y =");
+	}
+	else fprintf(FteX, "Поставьте мне неуд, потому что я не определил массив\n\n");
+	PrintExpress(top);
+	fprintf(FteX, "\\]\n");
+	return OK;
+}
 
 int PrintTree(node* top, int* count)
 {
@@ -439,171 +451,33 @@ int PrintTree(node* top, int* count)
 	return OK;
 }
 
-int Print(node* top, FILE* fout)
+int Print(node* top, FILE* FteX)
 {
 	if (top->type == T_func) 
 	{ 
-		fprintf(fout, "%s", top->data);
-		fprintf(fout, "(");
-		if (top->right) Print(top->right, fout);
-		else Print(top->left, fout);
-		fprintf(fout, ")");
+		fprintf(FteX, "%s", top->data);
+		fprintf(FteX, "(");
+		if (top->right) Print(top->right, FteX);
+		else Print(top->left, FteX);
+		fprintf(FteX, ")");
 	}
 	else
 	{
-		if (top->left) { fprintf(fout, "("); Print(top->left, fout); }
-		fprintf(fout, "%s", top->data);
-		if (top->right) { Print(top->right, fout); fprintf(fout, ")"); }
+		if (top->left) { fprintf(FteX, "("); Print(top->left, FteX); }
+		fprintf(FteX, "%s", top->data);
+		if (top->right) { Print(top->right, FteX); fprintf(FteX, ")"); }
 	}
 
 	return OK;
-}
-
-node* GetG0(const char* buffer)
-{
-	s = buffer;
-	node* top = GetE();
-	int count = 0;
-	//int val = PrintTree(top, &count);
-	if (*s == NULL) return top;
-	else return NULL;
-}
-
-node *GetE()
-{
-	node* top = new node;
-	node* leaf2 = new node;
-	node* leaf = GetT();
-	if (!leaf) return NULL;
-	char op = 0;
-	while (*s == '+' || *s == '-')
-	{
-		top = new node;
-		op = *s++;
-		leaf2 = GetT();
-		if (!leaf2) return NULL;
-		CREATEDATA(top);
-		top->data[1] = '\0';
-		MAKENODE(T_op);
-
-	}
-	return leaf;
-}
-
-node* GetN()
-{
-	node* leaf = new node;
-	int count = 0;
-	char* val = (char*)calloc(SIZEOFNUMBER, sizeof(char));
-	while (*s >= '0' && *s <= '9' || *s == '.' || *s == '-')
-	{
-		val[count++] =*s;
-		*s++;
-	}
-	(char*)leaf->data = (char*)calloc(count + 1, sizeof(char));
-	strcpy(leaf->data, val);
-	//ftoa(val, leaf->data, Radix);
-	leaf->data[count] = '\0';
-	leaf->type = T_num;
-	return leaf;
-}
-
-node *GetT()
-{
-	node* top = new node;
-	node* leaf2 = new node;
-	node* leaf = GetS();
-	if (!leaf) return NULL;
-	int op = 0;
-	while (*s == '/' || *s == '*')
-	{
-		top = new node;
-		op = *s++;
-		leaf2 = GetS();
-		if (!leaf2) return NULL;
-		CREATEDATA(top);
-		top->data[1] = '\0';
-		MAKENODE(T_op);
-	}
-	return leaf;
-}
-
-node *GetS()
-{
-	node* top = new node;
-	node* leaf2 = new node;
-	node* leaf = GetP();
-	if (!leaf) return NULL;
-	int op = 0;
-	if (*s == '^')
-	{
-		top = new node;
-		op = *s++;
-		leaf2 = GetP();
-		if (!leaf2) return NULL;
-		CREATEDATA(top);
-		top->data[1] = '\0';
-		MAKENODE(T_op);
-	}
-	return leaf;
-}
-
-node *GetP()
-{
-	node* val = {};
-	if (*s == '(')
-	{
-		s++;
-		node* leaf = GetE();
-		if (*s == ')') { s++; return leaf; }
-		else return NULL;
-	}
-	else
-	{
-		val = GetN();
-		if (atof(val->data) == NULL) return GetVar();
-		else return val;
-	}
-}
-
-node* GetVar()
-{
-	node* leaf = new node;
-	char val[LENGTHOFWORD] = "";
-	int count = 0;
-	while (*s >= 'a' && *s <= 'z')
-	{
-		val[count++] = *s;
-		*s++;
-	}
-	if (IsFunc(val)) 
-		return GetFunc(val);
-	(char*)leaf->data = (char*)calloc(count + 1, sizeof(char));
-	leaf->data[count] = '\0';
-	strcpy(leaf->data, val);
-	leaf->type = T_var;
-
-	return leaf;
-}
-
-node* GetFunc(char* val)
-{
-	node* top = new node;
-	node* leaf = GetP();
-	if (!leaf) return NULL;
-
-	CREATEDATA(top);
-	NODECTOR(top, val, T_func, leaf, NULL);
-	return top;
 }
 
 int IsFunc(char* val)
 {
 	if (IS("sin", val)) return OK;
 	else if (IS("cos", val)) return OK;
-	else if (IS("tg" , val)) return OK;
+	else if (IS("tg", val)) return OK;
 	else if (IS("ctg", val)) return OK;
-	else if (IS("ln" , val)) return OK;
+	else if (IS("ln", val)) return OK;
 	else return 0;
 }
 
@@ -757,7 +631,7 @@ node* Derivation(node* top)
 
 void DestroyTree(node* vert)
 {
-	delete[]vert->data;
+	strcpy(vert->data,"\0");
 	vert->type = NULL;
 	while (vert->left)  { 
 		DestroyTree(vert->left);	
@@ -905,6 +779,8 @@ node* Cleaning(node* top, int* WasCleaned)
 				}
 
 			}
+			if (WasCleaned)
+			PrintInTex(top, FteX);
 			top->left = Cleaning(top->left, WasCleaned);
 			top->right = Cleaning(top->right, WasCleaned);
 		}
