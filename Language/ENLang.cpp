@@ -26,12 +26,17 @@ struct lex
 	lex() : type(), val(""), pos(""){}
 };
 
-enum Types { T_var = 1, T_op = 2, T_num = 3, T_func = 4, T_Mop = 5};
+
+enum Types { T_var = 1, T_op = 2, T_num = 3, T_func = 4, T_Mop = 5, T_Cfunc = 6 };
 lex *s = NULL;
 FILE* Fdotty = NULL;
+
 #include "TreeBuilder.h"
+#include "translator.h"
+
 int PrintTree(node* top, int* count);
 int Print(node* top, FILE* fout);
+int PrintHelp();
 int DottyTree(node* top);
 
 //enum E_TOKEN_TYPES
@@ -50,13 +55,22 @@ int DottyTree(node* top);
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	char* buffer = ReadFile(L"tempLang.txt");
+	if (!strcmp(wtoc(argv[1]), "-help"))
+	{
+		PrintHelp();
+		system("pause");
+		return 0;
+	}
+	//char* buffer = ReadFile(L"tempLang.txt");
+	char* buffer = ReadFile(argv[1]);
 	if (buffer == NULL) { printf("NO FILE!!"); return 1; }
 	int countOfLexem = 0;
 	lex* lexic = Lexer(buffer, &countOfLexem);
 
 	errno_t err1 = fopen_s(&Fdotty, "E:\\C++\\Derivative\\Derivative\\dumpTree.gv", "w");
 	fprintf(Fdotty, "graph graphname {");
+
+	errno_t err2 = fopen_s(&ftrans, "FileForASM.txt", "w");
 
 	for (int i = 0; i < countOfLexem; i++)
 	{
@@ -66,25 +80,42 @@ int _tmain(int argc, _TCHAR* argv[])
 			"current pos <%s>\n\n", i, lexic[i].val, lexic[i].type, lexic[i].pos);
 	}
 
+	Var.vars = new char*[COUNTOFREGISTER];
+
 	node* top = GetG0(lexic);
 	if (!top) printf("SYNTAX ERROR!!!\n"
 		"at this symbol %s \n", s->pos);
+	s++;
+	node* funcTop = GetG0(s);
+	node* Main = new node;
+	NODECTOR(Main, "main", T_op, top, funcTop);
+	if (!top) printf("SYNTAX ERROR!!!\n"
+		"at this symbol %s \n", s->pos);
 	int count = 0;
-	PrintTree(top, &count);
+	PrintTree(Main, &count);
 
 	FILE* fout = NULL;
 	errno_t err = fopen_s(&fout, "Expression.txt", "w");
-	Print(top, fout);
-	DottyTree(top);
+	Print(Main, fout);
+	DottyTree(Main);
+	int countOfJump = 0, pop = 0, flag = 0;
+	Translate(Main, countOfJump, &pop, flag);
+	//fprintf(ftrans, "end");
+	//reg regis = {};
 
 	fprintf(Fdotty,"}");
 	fclose(Fdotty);
+	fclose(ftrans);
+	/////////////////////////////////////////////////
+	//char* FROM = "C:\\Users\\Vladimir\\Documents\\Visual Studio 2013\\Projects\\ENLang\Debug"
+
+	/////////////////////////////////////////////////
 	system("E:\\C++\\Graphviz2.38\\bin\\dotty.exe E:\\C++\\Derivative\\Derivative\\dumpTree.gv");
 	system("pause");
 
 	return 0;
 }
-
+//печать в консоль
 int PrintTree(node* top, int* count)
 {
 	if (top == NULL) return 0;
@@ -101,7 +132,7 @@ int PrintTree(node* top, int* count)
 
 	return OK;
 }
-
+//распечатка в доттер
 int DottyTree(node* top)
 {
 	if (!top) return NULL;
@@ -116,7 +147,7 @@ int DottyTree(node* top)
 	fprintf(Fdotty, ",label=\"%s\"];\n", top->data);
 	if (top->right) { fprintf(Fdotty, "%d -- %d;\n", top, top->right); DottyTree(top->right); }
 }
-
+//печать в файл правильного скобочного выражения
 int Print(node* top, FILE* fout)
 {
 	if (!top || !fout) return NULL;
@@ -146,3 +177,57 @@ int Print(node* top, FILE* fout)
 
 	return OK;
 }
+
+int PrintHelp()
+{
+	char key = ' ';
+	printf("Hello!\n"
+		"You are using new language EN\n"
+		"if you want to know about history of this language enter 'H'\n"
+		"if you want to see some example of syntax enter 'S'\n");
+	scanf("%c", &key);
+	if (key == 'H')
+		printf("This language was created by me, Vova, 12.12.15\n");
+	if (key == 'S')
+	{
+		printf("this language has some function:\n"
+			"1. if 'I'\n"
+			"2. while 'W'\n"
+			"3. call 'C'\n"
+			"4. main rules 'M'\n"
+			"5. out 'O'\n"
+			"Enter comand> ");
+		char tmp = ' ';
+		while (key != 'O')
+		{
+			scanf("%c%c", &tmp, &key);
+			if (key == 'I') printf("\noperator 'if' working like in others programming languages\n"
+				"example : if )x > 4(\n"
+				"[\n"
+				"x = x + 4#\n"
+				"]\n"
+				"symbols '[' and ']' are neccesarry\n"
+				"brackets must be invert - ') x > 4 ('\n");
+			if (key == 'W') printf("\noperator 'while' working like in others programming languages\n"
+				"and main rules of syntax are the same as in 'if'\n");
+			if (key == 'C') printf("\n'call' using for calling of function\n"
+				"example: call func()#\n"
+				"....\n"
+				"end\n"
+				"func()\n"
+				"[\n"
+				"x = x + 4#\n"
+				"]\n");
+			if (key == 'M') printf("\nat start you must write 'begin' and 'end' in the end of programm\n"
+				"all variables must must be declarete by 'var'\n"
+				"simpliest mathematic function like '+' '-' '*' '/' 'sqrt(var)' are here\n"
+				"in equation you can use brackets like '(x + 3)'\n"
+				"after any equations must be '#'\n"
+				"there are operators '>', '<', '@' like '==' in C, '!' like '!=' in C\n"
+				"if you want to know more about EN you can phone +79853151865\n");
+
+		}
+	}
+	return OK;
+}
+

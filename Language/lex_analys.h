@@ -9,6 +9,11 @@ const int SIZEOFLIST = 256;
 //strcpy(lexic[numOfLex].val, tmpbuf);
 //lexic[numOfLex].type = T_op;
 //numOfLex++;
+#define LEXCTOR(Ctype)									\
+lexic[*numOfLex].val = (char*)calloc(Len, sizeof(char));\
+strcpy(lexic[*numOfLex].val, tmpbuf);					\
+lexic[*numOfLex].type = Ctype;							\
+(*numOfLex)++;
 
 #define IS(Var, vaL) !strcmp(Var, vaL) 
 
@@ -35,20 +40,17 @@ lex* Lexer(char* buffer, int* numOfLex)
 			if (IsOper(tmpbuf))
 			{
 				Len = strlen(tmpbuf);
-				lexic[*numOfLex].val = (char*)calloc(Len, sizeof(char));
-				strcpy(lexic[*numOfLex].val, tmpbuf);
-				lexic[*numOfLex].type = T_op;
-				(*numOfLex)++;
+				LEXCTOR(T_op);
+			}
+			else if (IsFunc(tmpbuf))
+			{
+				Len = strlen(tmpbuf);
+				LEXCTOR(T_func);
 			}
 			else
 			{
-				//lexic[*numOfLex].pos = buffer;
-				lexic[*numOfLex].val = (char*)calloc(Len, sizeof(char));
-				strcpy(lexic[*numOfLex].val, tmpbuf);
-				lexic[*numOfLex].type = T_var;
-				(*numOfLex)++;
+				LEXCTOR(T_var);
 			}
-				//LEXCTOR()
 		}
 		//numbers
 		else if (isdigit(*buffer))
@@ -57,10 +59,7 @@ lex* Lexer(char* buffer, int* numOfLex)
 			while (isdigit(*buffer))
 				tmpbuf[i++] = *buffer++;
 			tmpbuf[i] = '\0';
-			lexic[*numOfLex].val = (char*)calloc(Len, sizeof(char));
-			strcpy(lexic[*numOfLex].val, tmpbuf);
-			lexic[*numOfLex].type = T_num;
-			(*numOfLex)++;
+			LEXCTOR(T_num);
 		}
 		//operator nontext arithm
 		else if (myIsOper(*buffer))
@@ -69,10 +68,7 @@ lex* Lexer(char* buffer, int* numOfLex)
 			while (myIsOper(*buffer))
 				tmpbuf[i++] = *buffer++;
 			tmpbuf[i] = '\0';
-			lexic[*numOfLex].val = (char*)calloc(Len, sizeof(char));
-			strcpy(lexic[*numOfLex].val, tmpbuf);
-			lexic[*numOfLex].type = T_op;
-			(*numOfLex)++;
+			LEXCTOR(T_op);
 		}
 		//operator nontext 
 		else if (IsOperator(*buffer))
@@ -80,10 +76,7 @@ lex* Lexer(char* buffer, int* numOfLex)
 			lexic[*numOfLex].pos = buffer;
 				tmpbuf[i++] = *buffer++;
 			tmpbuf[i] = '\0';
-			lexic[*numOfLex].val = (char*)calloc(Len, sizeof(char));
-			strcpy(lexic[*numOfLex].val, tmpbuf);
-			lexic[*numOfLex].type = T_op;
-			(*numOfLex)++;
+			LEXCTOR(T_op);
 		}
 		//tabulation
 		if (IsTab(*buffer))
@@ -105,7 +98,7 @@ lex* Lexer(char* buffer, int* numOfLex)
 
 int myIsOper(char c)
 {
-	if (c == '*' || c == '-' || c == '+' || c == '/' || c == '>' || c == '<' || c == '=')
+	if (c == '*' || c == '-' || c == '+' || c == '/' || c == '>' || c == '<' || c == '=' || c == '!' || c == '@')
 		return 1;
 	else return 0;
 }

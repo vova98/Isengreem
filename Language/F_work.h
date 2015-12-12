@@ -130,6 +130,7 @@ char* ftoa(double num)
 
 const char* wtoc(const wchar_t* w_string)
 {
+	if (!w_string) return NULL;
 	const char* argvName = (char*)calloc(wcslen(w_string), sizeof(argvName));
 	size_t len = wcstombs((char*)argvName, w_string, wcslen(w_string));
 	return argvName;

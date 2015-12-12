@@ -20,14 +20,15 @@
 	leaf = top;
 
 #define CREATEEXPRESSION(func)	\
-top = new node;					\
-op = *s->val;					\
-*s++;							\
-leaf2 = func;					\
+	top = new node;					\
+	op = *s->val;					\
+	*s++;							\
+	leaf2 = func;					\
 if (!leaf2) return NULL;		\
-CREATEDATA(top);				\
-top->data[1] = '\0';			\
-MAKENODE(T_op);				
+	CREATEDATA(top);				\
+	top->data[1] = '\0';			\
+	MAKENODE(T_op);
+
 
 
 struct node
@@ -39,8 +40,15 @@ struct node
 	node() :data(""), type(), left(NULL), right(NULL){}
 };
 
-//node* NodeCtor(int type, const char op, node* left, node* right);
+struct variables
+{
+	char** vars;
+	int count;
+	variables() :vars(), count(){}
+};
+
 node* GetG0(lex*);
+
 node* GetS();
 node* GetN();
 node* GetT();
@@ -51,20 +59,33 @@ node* GetEq();
 node *GetIf();
 node *GetOp();
 node *GetCall();
+node *GetRW();
 node* GetFunc(char* val);
+node* GetCFunc(int startfunc);
+void CopyTree(node* dest, node* source);
 int IsFunc(char* val);
 
 const int LENGTHOFWORD = 10;
+const int COUNTOFREGISTER = 4;
+int COUNTOFFUNC = 0;
+variables Var = {};
 
 node* GetG0(lex* lexic)
 {
+	node* top = NULL;
 	s = new lex;
 	s = lexic;
+
+	int startfunc = 0;
+	for (int i = 0; i < Var.count; i++)
+	if (IS(s->val, Var.vars[i])) startfunc = i;
+
+	if (startfunc) return GetCFunc(startfunc);
 
 	if (!IS(s->val, "begin")) return NULL;
 	s++;
 
-	node* top = NULL;
+	
 	top = GetOp();
 
 	if (!top) return NULL;
@@ -81,6 +102,8 @@ node* GetOp()
 		leaf = GetIf();
 	else if (IS(s->val, "call"))
 		leaf = GetCall();
+	else if (IS(s->val, "read") || IS(s->val, "write"))
+		leaf = GetRW();
 
 	else {
 		if (IS(s->val, "var"))
@@ -101,6 +124,38 @@ node* GetOp()
 	return top;
 }
 
+node* GetCFunc(int startfunc)
+{
+	node* top = new node;
+	node* leaf2 = new node;
+	node* leafLeft = new node;
+	node* leaf = NULL;
+	s++;
+	if (IS(s->val, "(") && IS((s + 1)->val, ")") && IS((s + 2)->val, "["))
+	s += 3;
+	else return NULL;
+	leaf = GetOp();
+	
+	char* codename = (char*)calloc(LENGTHOFWORD, sizeof(char));
+	strcpy(codename, Var.vars[startfunc]);
+	//itoa(10000 + startfunc, codename, 10);
+	startfunc++;
+	NODECTOR(leafLeft, codename, T_Cfunc, leaf, NULL);
+
+	if (IS(s->val, "]") && !IS((s+1)->val, "\0"))
+	{
+		s++;
+		for (int i = 0; i < Var.count; i++)
+		if (IS(s->val, Var.vars[i]))
+		leaf2 = GetCFunc(i);
+		if (!leaf2) return NULL;
+	}
+	else if (!IS(s->val, "]") && !IS(s->val, "\0")) return NULL; 
+	s++;
+	CREATEDATA(top);
+	NODECTOR(top, "Func", T_op, leafLeft, leaf2);
+	return top;
+}
 
 node* GetEq()
 {
@@ -108,7 +163,7 @@ node* GetEq()
 	node* leaf2 = new node;
 	node* leaf = NULL;
 	if (s->type == T_var)
-	leaf = GetVar();
+		leaf = GetVar();
 	if (!leaf) return NULL;
 
 	char op = 0;
@@ -135,26 +190,10 @@ node *GetE()
 	while (*s->val == '+' || *s->val == '-')
 	{
 		CREATEEXPRESSION(GetT());
-		/*top = new node;
-		op = *s->val;
-		*s++;
-		leaf2 = GetT();
-		if (!leaf2) return NULL;
-		CREATEDATA(top);
-		top->data[1] = '\0';
-		MAKENODE(T_op);*/
 	}
-	if (*s->val == '>' || *s->val == '<')
+	if (*s->val == '>' || *s->val == '<' || *s->val == '@'|| *s->val == '!')
 	{
 		CREATEEXPRESSION(GetE());
-		/*top = new node;
-		op = *s->val;
-		*s++;
-		leaf2 = GetE();
-		if (!leaf2) return NULL;
-		CREATEDATA(top);
-		top->data[1] = '\0';
-		MAKENODE(T_op);*/
 	}
 	return leaf;
 }
@@ -181,14 +220,6 @@ node *GetT()
 	while (*s->val == '/' || *s->val == '*')
 	{
 		CREATEEXPRESSION(GetS());
-		//top = new node;
-		//op = *(s->val);
-		//*s++;
-		//leaf2 = GetS();
-		//if (!leaf2) return NULL;
-		//CREATEDATA(top);
-		//top->data[1] = '\0';
-		//MAKENODE(T_op);
 	}
 	return leaf;
 }
@@ -203,14 +234,6 @@ node *GetS()
 	if (*s->val == '^')
 	{
 		CREATEEXPRESSION(GetP());
-		//top = new node;
-		//op = *(s->val);
-		//*s++;
-		//leaf2 = GetP();
-		//if (!leaf2) return NULL;
-		//CREATEDATA(top);
-		//top->data[1] = '\0';
-		//MAKENODE(T_op);
 	}
 	return leaf;
 }
@@ -224,7 +247,7 @@ node *GetP()
 		node* leaf = GetE();
 		if (*s->val == ')')
 			s++;
-			return leaf;
+		return leaf;
 	}
 	else
 	{
@@ -268,6 +291,7 @@ node *GetCall()
 	{
 		s++;
 		node* leaf = GetVar();
+
 		if (!IS(s->val, "(") || !leaf) return NULL;
 		s++;
 		if (IS(s->val, ")"))
@@ -283,16 +307,54 @@ node *GetCall()
 	return NULL;
 }
 
+node* GetRW()
+{
+	node* top = new node;
+	if (IS(s->val, "read") || IS(s->val, "write"))
+	{
+		char* name = (char*)calloc(strlen(s->val), sizeof(char));
+		strcpy(name, s->val);
+		s++;
+
+		if (!IS(s->val, ")")) return NULL;
+		{
+			s++;
+			node* leaf = GetE();
+			if (IS(s->val, "(") && leaf)
+			{
+				s++;
+				if (!IS(s->val, "#")) return NULL;
+				else if (!IS(s->val, "end")) s++;
+				CREATEDATA(top);
+				NODECTOR(top, name, T_Mop, leaf, NULL);
+				return top;
+			}
+		}
+	}
+	return NULL;
+}
 
 node* GetVar()
 {
 	node* leaf = new node;
 	char val[LENGTHOFWORD] = "";
-	int count = 0;
+	int count = 0, flag = 0;
 	strcpy(val, s->val);
 	*s++;
 	if (IsFunc(val))
 		return GetFunc(val);
+
+	for (int i = 0; i < Var.count; i++)
+	if (IS(Var.vars[i], val)) flag = 1;
+	if (!flag)
+	if (IS((s - 2)->val, "var") || IS((s - 2)->val, "call"))
+	{
+		(char*)Var.vars[Var.count] = (char*)calloc(strlen(val), sizeof(char));
+		strcpy(Var.vars[Var.count++], val);
+	}
+	else return NULL;
+
+	//if (!VAR(val))
 	(char*)leaf->data = (char*)calloc(strlen(val), sizeof(char));
 	strcpy(leaf->data, val);
 	leaf->type = T_var;
@@ -312,12 +374,29 @@ node* GetFunc(char* val)
 
 int IsFunc(char* val)
 {
-	if (IS("sin", val)) return OK;
-	else if (IS("cos", val)) return OK;
-	else if (IS("tg", val)) return OK;
-	else if (IS("ctg", val)) return OK;
-	else if (IS("ln", val)) return OK;
+	if (IS("sqrt", val)) return OK;
 	else return 0;
 }
 
+void CopyTree(node* dest, node* source)
+{
+	//dest = (node*)malloc(sizeof(node));
+	CREATEDATA(dest);
+	strcpy(dest->data, source->data);
+	dest->type = source->type;
+	dest->left = NULL;
+	dest->right = NULL;
+	if (source->left != NULL && source->left->data != NULL)
+	{
+		//CREATEDATA(dest->left);
+		dest->left = new node;// (node*)malloc(sizeof(node));
+		CopyTree(dest->left, source->left);
+	}
+	if (source->right != NULL && source->left->data != NULL)
+	{
+		//CREATEDATA(dest->left);
+		dest->right = new node;//dest->right = (node*)malloc(sizeof(node));
+		CopyTree(dest->right, source->right);
+	}
+}
 
